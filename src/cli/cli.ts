@@ -38,7 +38,9 @@ export class Cli {
         LARAVEL_ECHO_SERVER_SSL_CERT: "sslCertPath",
         LARAVEL_ECHO_SERVER_SSL_KEY: "sslKeyPath",
         LARAVEL_ECHO_SERVER_SSL_CHAIN: "sslCertChainPath",
-        LARAVEL_ECHO_SERVER_SSL_PASS: "sslPassphrase"
+        LARAVEL_ECHO_SERVER_SSL_PASS: "sslPassphrase",
+        LARAVEL_ECHO_SERVER_HOOK_ENDPOINT: "hookEndpoint"
+
     };
 
     /**
@@ -155,6 +157,11 @@ export class Cli {
                 name: "authHost",
                 default: "http://localhost",
                 message: "Enter the host of your Laravel authentication server."
+            },
+            {
+                name: "hookEndpoint",
+                default: "http://localhost",
+                message: "Enter the host of your Laravel hook endpoint."
             },
             {
                 name: "protocol",

@@ -1,6 +1,8 @@
+let request = require('request');
 import { PresenceChannel } from './presence-channel';
 import { PrivateChannel } from './private-channel';
 import { Log } from './../log';
+var fs = require('fs');
 
 export class Channel {
     /**
@@ -24,12 +26,20 @@ export class Channel {
     presence: PresenceChannel;
 
     /**
+     * Request client.
+     *
+     * @type {any}
+     */
+    private request: any;
+
+    /**
      * Create a new channel instance.
      */
     constructor(private io, private options) {
         this.private = new PrivateChannel(options);
         this.presence = new PresenceChannel(io, options);
-
+        this.request = request;
+        this.options = options;
         if (this.options.devMode) {
             Log.success('Channels are ready.');
         }
@@ -73,17 +83,30 @@ export class Channel {
     /**
      * Leave a channel.
      */
-    leave(socket: any, channel: string, reason: string): void {
+    async leave(socket: any, channel: string, reason: string, auth: any): Promise<void> {
         if (channel) {
-            if (this.isPresence(channel)) {
-                this.presence.leave(socket, channel)
-            }
+            let user = null;
 
+            if (this.isPresence(channel)) {
+                let member = await this.presence.leave(socket, channel);
+                if (member !== undefined) {
+                    user = member;
+                }
+            }
             socket.leave(channel);
 
             if (this.options.devMode) {
-                Log.info(`[${new Date().toISOString()}] - ${socket.id} left channel: ${channel} (${reason})`);
+                Log.info(`[${new Date().toLocaleTimeString()}] - ${socket.id} left channel: ${channel} (${reason})`);
             }
+
+            let payload;
+            if (user !== null) {
+                payload = {"userId": user.user_id};
+            } else {
+                payload = {};
+            }
+
+            this.hook(socket, channel, auth, "leave", payload);
         }
     }
 
@@ -163,5 +186,80 @@ export class Channel {
      */
     isInChannel(socket: any, channel: string): boolean {
         return !!socket.rooms[channel];
+    }
+
+    /**
+     *
+     * @param {any} socket
+     * @param {string} channel
+     * @param {object} auth
+     * @param {string} event
+     * @param {object} payload
+     */
+    hook(socket:any, channel: any, auth: any, event: string, payload: object) {
+        if (typeof this.options.hookEndpoint == 'undefined' ||
+            !this.options.hookEndpoint) {
+            return;
+        }
+
+        let hookEndpoint = this.options.hookEndpoint;
+
+        let options = this.prepareHookHeaders(socket, auth, channel, hookEndpoint, event, payload);
+
+        this.request.post(options, (error, response, body, next) => {
+            if (error) {
+                if (this.options.devMode) {
+                    Log.error(`[${new Date().toLocaleTimeString()}] - Error call ${event} hook ${socket.id} for ${options.form.channel}`);
+                }
+                Log.error(error);
+            } else if (response.statusCode !== 200) {
+                if (this.options.devMode) {
+                    Log.warning(`[${new Date().toLocaleTimeString()}] - Error call ${event} hook ${socket.id} for ${options.form.channel}`);
+                    Log.error(response.body);
+                }
+            } else {
+                if (this.options.devMode) {
+                    Log.info(`[${new Date().toLocaleTimeString()}] - Call ${event} hook for ${socket.id} for ${options.form.channel}: ${response.body}`);
+                }
+            }
+        });
+    }
+
+    /**
+     * Prepare headers for request to app server.
+     *
+     * @param {any} socket
+     * @param {any} auth
+     * @param {string} channel
+     * @param {string} hookEndpoint
+     * @param {string} event
+     * @param {any} payload
+     * @returns {any}
+     */
+    prepareHookHeaders(socket: any, auth: any, channel: string, hookEndpoint: string, event: string, payload: any): any {
+        let hookHost = this.options.hookHost ? this.options.hookHost : this.options.authHost;
+        let options = {
+            url: hookHost + hookEndpoint,
+            form: {
+                event: event,
+                channel: channel,
+                payload: payload
+            },
+            headers: (auth && auth.headers) ? auth.headers : {}
+        };
+
+        if (hookHost.indexOf('https')>-1 && this.options.sslCertPath && this.options.sslKeyPath) {
+            options['agentOptions']= {
+                cert: fs.readFileSync(this.options.sslCertPath),
+                key: fs.readFileSync(this.options.sslKeyPath),
+                passphrase: this.options.sslPassphrase,
+                //securityOptions: 'SSL_OP_NO_SSLv3'
+            };
+            options['strictSSL']=false;
+        }
+
+        options.headers['Cookie'] = socket.request.headers.cookie;
+        options.headers['X-Requested-With'] = 'XMLHttpRequest';
+        return options;
     }
 }

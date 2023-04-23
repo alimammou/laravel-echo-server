@@ -115,26 +115,40 @@ export class PresenceChannel {
      * Remove a member from a presenece channel and broadcast they have left
      * only if not other presence channel instances exist.
      */
-    leave(socket: any, channel: string): void {
-        this.getMembers(channel).then(
+    async leave(socket: any, channel: string): Promise<any> {
+        let memberResult;
+        await this.getMembers(channel).then(
             (members) => {
                 members = members || [];
-                let member = members.find(
-                    (member) => member.socketId == socket.id
-                );
-                members = members.filter((m) => m.socketId != member.socketId);
+                let member
 
-                this.db.set(channel + ":members", members);
-
-                this.isMember(channel, member).then((is_member) => {
-                    if (!is_member) {
-                        delete member.socketId;
-                        this.onLeave(channel, member);
+                members = members.filter((m) => {
+                    if(m.socketId == socket.id) {
+                        member = m;
+                        return false;
                     }
+
+                    return true;
                 });
+
+                this.db.set(channel + ':members', members);
+
+                if (member) {
+                    memberResult = member;
+                    this.isMember(channel, member).then(is_member => {
+                        if (!is_member) {
+                            if (member !== undefined && member !== null) {
+                                delete member.socketId;
+                            }
+                            this.onLeave(channel, member);
+                        }
+                    });
+                }
             },
-            (error) => Log.error(error)
+            error => Log.error(error)
         );
+
+        return memberResult;
     }
 
     /**
