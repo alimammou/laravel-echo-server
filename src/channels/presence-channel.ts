@@ -120,16 +120,11 @@ export class PresenceChannel {
         await this.getMembers(channel).then(
             (members) => {
                 members = members || [];
-                let member
 
-                members = members.filter((m) => {
-                    if(m.socketId == socket.id) {
-                        member = m;
-                        return false;
-                    }
-
-                    return true;
-                });
+                let member = members.find(
+                    (member) => member.socketId == socket.id
+                );
+                members = members.filter((m) => m.socketId != member.socketId);
 
                 this.db.set(channel + ':members', members);
 
@@ -143,6 +138,8 @@ export class PresenceChannel {
                             this.onLeave(channel, member);
                         }
                     });
+                } else {
+                    Log.error('No member found with the specified socket ID');
                 }
             },
             error => Log.error(error)

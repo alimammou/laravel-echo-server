@@ -32,7 +32,7 @@ export class HttpSubscriber implements Subscriber {
 
             Log.success('Listening for http events...');
 
-            resolve();
+            resolve(this);
         });
     }
 
@@ -47,7 +47,7 @@ export class HttpSubscriber implements Subscriber {
                 this.express.post('/apps/:appId/events', (req, res) => {
                     res.status(404).send();
                 });
-                resolve();
+                resolve(this);
             } catch(e) {
                 reject('Could not overwrite the event endpoint -> ' + e);
             }

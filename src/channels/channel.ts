@@ -135,7 +135,11 @@ export class Channel {
                 var member = res.channel_data;
                 try {
                     member = JSON.parse(res.channel_data);
-                } catch (e) { }
+                } catch (e) {
+                    Log.error(
+                       'error parsing user info'+ e
+                    );
+                }
 
                 this.presence.join(socket, data.channel, member);
             }
@@ -248,15 +252,6 @@ export class Channel {
             headers: (auth && auth.headers) ? auth.headers : {}
         };
 
-        if (hookHost.indexOf('https')>-1 && this.options.sslCertPath && this.options.sslKeyPath) {
-            options['agentOptions']= {
-                cert: fs.readFileSync(this.options.sslCertPath),
-                key: fs.readFileSync(this.options.sslKeyPath),
-                passphrase: this.options.sslPassphrase,
-                //securityOptions: 'SSL_OP_NO_SSLv3'
-            };
-            options['strictSSL']=false;
-        }
 
         options.headers['Cookie'] = socket.request.headers.cookie;
         options.headers['X-Requested-With'] = 'XMLHttpRequest';

@@ -114,7 +114,7 @@ export class EchoServer {
             this.httpApi.init();
 
             this.onConnect();
-            this.listen().then(() => resolve(), err => Log.error(err));
+            this.listen().then((e) => resolve(e), err => Log.error(err));
         });
     }
 
@@ -159,7 +159,7 @@ export class EchoServer {
                 });
             });
 
-            Promise.all(subscribePromises).then(() => resolve());
+            Promise.all(subscribePromises).then(() => resolve(this));
         });
     }
 
