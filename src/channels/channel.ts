@@ -83,7 +83,7 @@ export class Channel {
     /**
      * Leave a channel.
      */
-    async leave(socket: any, channel: string, reason: string, auth: any): Promise<void> {
+    async leave(socket: any, channel: string, reason: string, auth: any, userId: number | any = null): Promise<void> {
         if (channel) {
             let user = null;
 
@@ -103,7 +103,7 @@ export class Channel {
             if (user !== null) {
                 payload = {"userId": user.user_id};
             } else {
-                payload = {};
+                payload = {"userId": userId};
             }
 
             this.hook(socket, channel, auth, "leave", payload);

@@ -159,7 +159,7 @@ export class EchoServer {
                 });
             });
 
-            Promise.all(subscribePromises).then(() => resolve(this));
+            Promise.all(subscribePromises).then((e) => resolve(e));
         });
     }
 
@@ -227,7 +227,20 @@ export class EchoServer {
      */
     onUnsubscribe(socket: any): void {
         socket.on('unsubscribe', data => {
-            this.channel.leave(socket, data.channel, 'unsubscribed', data.auth);
+            const partialText = "App.Models.User.";
+
+            // @ts-ignore
+            const foundElement = Array.from(socket.rooms).find(element => element.includes(partialText));
+            var userId = null
+            if (foundElement) {
+                const regex = /\d+$/; // Matches one or more digits at the end of the string
+
+                // @ts-ignore
+                const match = foundElement.match(regex);
+                userId = parseInt(match[0], 10);
+
+            }
+            this.channel.leave(socket, data.channel, 'unsubscribed', data.auth, userId);
         });
     }
 
@@ -236,9 +249,29 @@ export class EchoServer {
      */
     onDisconnecting(socket: any): void {
         socket.on('disconnecting', (reason) => {
+            const partialText = "App.Models.User.";
+
+            // @ts-ignore
+            const foundElement = Array.from(socket.rooms).find(element => element.includes(partialText));
+            var userId = null
+            if (foundElement) {
+                const regex = /\d+$/; // Matches one or more digits at the end of the string
+
+                // @ts-ignore
+                const match = foundElement.match(regex);
+                 userId = parseInt(match[0], 10);
+
+            }
+            socket.rooms.forEach(room => {
+                if (room !== socket.id) {
+                    this.channel.leave(socket, room, reason,{},userId);
+                }
+            });
+        });
+        socket.on('disconnect', (reason) => {
             Object.keys(socket.rooms).forEach(room => {
                 if (room !== socket.id) {
-                    this.channel.leave(socket, room, reason,{});
+                    this.channel.leave(socket, room, reason, {});
                 }
             });
         });

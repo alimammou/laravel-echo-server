@@ -52,7 +52,7 @@ export class PresenceChannel {
      * Remove inactive channel members from the presence channel.
      */
     removeInactive(channel: string, members: any[], member: any): Promise<any> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.io
                 .of("/")
                 .in(channel)
